@@ -53,6 +53,54 @@ class FirestoreDatasource {
     }, SetOptions(merge: true));
   }
 
+  NegocioModel _mapDocToNegocio(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+    Map<String, CategoriaModel> categoriasById,
+    Map<String, CategoriaModel> categoriasByPath,
+  ) {
+    final data = doc.data();
+    final categoriaRef =
+        data['categoria'] as DocumentReference<Map<String, dynamic>>?;
+    final categoriaIdFromField = (data['categoria_id'] ?? '').toString();
+    final categoria =
+        categoriasByPath[categoriaRef?.path ?? ''] ??
+        categoriasById[categoriaIdFromField];
+    final productosServicios =
+        ((data['productos_servicios'] as List<dynamic>?) ?? [])
+            .map((item) => item.toString().trim())
+            .where((item) => item.isNotEmpty)
+            .toList(growable: false);
+    final galeria =
+        ((data['galeria'] as List<dynamic>?) ?? [])
+            .map((item) => item.toString().trim())
+            .where((item) => item.isNotEmpty)
+            .take(5)
+            .toList(growable: false);
+    final geoPoint = data['coordenadas'] as GeoPoint?;
+
+    return NegocioModel(
+      id: doc.id,
+      nombre: (data['nombre'] ?? '') as String,
+      descripcion: (data['descripcion'] ?? '') as String,
+      productosServicios: productosServicios,
+      categoriaId: categoria?.id ?? '',
+      categoriaSlug: categoria?.slug ?? '',
+      categoriaTitulo: categoria?.titulo ?? '',
+      activo: (data['activo'] ?? true) as bool,
+      direccion: (data['direccion'] ?? '') as String,
+      whatsapp: (data['whatsapp'] ?? '') as String,
+      facebook: (data['facebook'] ?? '') as String,
+      instagram: (data['instagram'] ?? '') as String,
+      imagenUrl: ((data['image'] ?? data['imagen']) ?? '') as String,
+      imagenLocalPath: '',
+      galeriaUrls: galeria,
+      galeriaLocalPaths: const [],
+      latitud: geoPoint?.latitude,
+      longitud: geoPoint?.longitude,
+      esPrueba: (data['es_prueba'] ?? false) as bool,
+    );
+  }
+
   Future<List<NegocioModel>> fetchNegocios() async {
     final categorias = await fetchCategorias();
     final categoriasById = {
@@ -64,49 +112,26 @@ class FirestoreDatasource {
 
     final snapshot = await _firestore.collection('negocios').get();
     final items = snapshot.docs
-        .map((doc) {
-          final data = doc.data();
-          final categoriaRef =
-              data['categoria'] as DocumentReference<Map<String, dynamic>>?;
-            final categoriaIdFromField = (data['categoria_id'] ?? '').toString();
-            final categoria =
-              categoriasByPath[categoriaRef?.path ?? ''] ??
-              categoriasById[categoriaIdFromField];
-          final productosServicios =
-              ((data['productos_servicios'] as List<dynamic>?) ?? [])
-                  .map((item) => item.toString().trim())
-                  .where((item) => item.isNotEmpty)
-                  .toList(growable: false);
-          final galeria =
-              ((data['galeria'] as List<dynamic>?) ?? [])
-                  .map((item) => item.toString().trim())
-                  .where((item) => item.isNotEmpty)
-                  .take(5)
-                  .toList(growable: false);
-          final geoPoint = data['coordenadas'] as GeoPoint?;
+        .map((doc) => _mapDocToNegocio(doc, categoriasById, categoriasByPath))
+        .toList(growable: false)
+      ..sort((a, b) => a.nombre.compareTo(b.nombre));
 
-          return NegocioModel(
-            id: doc.id,
-            nombre: (data['nombre'] ?? '') as String,
-            descripcion: (data['descripcion'] ?? '') as String,
-            productosServicios: productosServicios,
-            categoriaId: categoria?.id ?? '',
-            categoriaSlug: categoria?.slug ?? '',
-            categoriaTitulo: categoria?.titulo ?? '',
-            activo: (data['activo'] ?? true) as bool,
-            direccion: (data['direccion'] ?? '') as String,
-            whatsapp: (data['whatsapp'] ?? '') as String,
-            facebook: (data['facebook'] ?? '') as String,
-            instagram: (data['instagram'] ?? '') as String,
-            imagenUrl: ((data['image'] ?? data['imagen']) ?? '') as String,
-            imagenLocalPath: '',
-            galeriaUrls: galeria,
-            galeriaLocalPaths: const [],
-            latitud: geoPoint?.latitude,
-            longitud: geoPoint?.longitude,
-            esPrueba: (data['es_prueba'] ?? false) as bool,
-          );
-        })
+    return items;
+  }
+
+  Future<List<NegocioModel>> fetchNegociosByCategoria(CategoriaModel categoria) async {
+    final categoriasById = {categoria.id: categoria};
+    final categoriasByPath = {'categorias/${categoria.id}': categoria};
+
+    // Query by new field first; also fetch docs with old DocumentReference format
+    // by matching the categoria path.
+    final snapshot = await _firestore
+        .collection('negocios')
+        .where('categoria_id', isEqualTo: categoria.id)
+        .get();
+
+    final items = snapshot.docs
+        .map((doc) => _mapDocToNegocio(doc, categoriasById, categoriasByPath))
         .toList(growable: false)
       ..sort((a, b) => a.nombre.compareTo(b.nombre));
 

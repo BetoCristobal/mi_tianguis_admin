@@ -1,5 +1,6 @@
 import 'package:mi_tianguis_admin/data/datasources/firestore_datasource.dart';
 import 'package:mi_tianguis_admin/data/datasources/storage_datasource.dart';
+import 'package:mi_tianguis_admin/data/models/categoria_model.dart';
 import 'package:mi_tianguis_admin/data/models/galeria_item_model.dart';
 import 'package:mi_tianguis_admin/data/models/negocio_model.dart';
 
@@ -14,8 +15,16 @@ class NegocioRepository {
   final FirestoreDatasource _firestoreDatasource;
   final StorageDatasource _storageDatasource;
 
+  Future<List<CategoriaModel>> fetchCategorias() async {
+    return _firestoreDatasource.fetchCategorias();
+  }
+
   Future<List<NegocioModel>> fetchNegocios() async {
     return _firestoreDatasource.fetchNegocios();
+  }
+
+  Future<List<NegocioModel>> fetchNegociosByCategoria(CategoriaModel categoria) async {
+    return _firestoreDatasource.fetchNegociosByCategoria(categoria);
   }
 
   Future<void> saveNegocio({
