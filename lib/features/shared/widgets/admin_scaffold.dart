@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mi_tianguis_admin/app/routes.dart';
+import 'package:mi_tianguis_admin/core/services/auth_service.dart';
 
 class AdminScaffold extends StatelessWidget {
   const AdminScaffold({
@@ -28,6 +29,21 @@ class AdminScaffold extends StatelessWidget {
                   title: Text(title),
                   actions: [
                     ...(actions ?? const []),
+                    IconButton(
+                      tooltip: 'Cerrar sesion',
+                      onPressed: () async {
+                        await AuthService.instance.signOut();
+                        if (!context.mounted) {
+                          return;
+                        }
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          AppRoutes.login,
+                          (route) => false,
+                        );
+                      },
+                      icon: const Icon(Icons.logout_rounded),
+                    ),
                     const SizedBox(width: 8),
                   ],
                 ),

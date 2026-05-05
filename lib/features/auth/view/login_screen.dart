@@ -15,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
     text: 'beto.cristobal.ro@gmail.com',
   );
   final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
   late final LoginViewModel _viewModel;
 
   @override
@@ -40,11 +41,11 @@ class _LoginScreenState extends State<LoginScreen> {
       password: _passwordController.text,
     );
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (success) {
+      // Navigate directly because authStateChanges() fires on a non-platform
+      // thread on Windows (Firebase Auth plugin bug) and would not update the UI.
       Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
       return;
     }
@@ -110,9 +111,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 14),
                         TextFormField(
                           controller: _passwordController,
-                          obscureText: true,
-                          decoration: const InputDecoration(
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
                             labelText: 'Contraseña',
+                            suffixIcon: IconButton(
+                              tooltip: _obscurePassword
+                                  ? 'Mostrar contraseña'
+                                  : 'Ocultar contraseña',
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {

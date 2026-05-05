@@ -83,7 +83,9 @@ class ImagePickerPanel extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
               children: [
                 FilledButton.tonalIcon(
                   onPressed: onTap,
@@ -94,14 +96,12 @@ class ImagePickerPanel extends StatelessWidget {
                         : 'Seleccionar imagen',
                   ),
                 ),
-                if ((_hasLocalPreview || _hasRemotePreview) && onClear != null) ...[
-                  const SizedBox(width: 10),
+                if ((_hasLocalPreview || _hasRemotePreview) && onClear != null)
                   OutlinedButton.icon(
                     onPressed: onClear,
                     icon: const Icon(Icons.delete_outline),
                     label: const Text('Quitar'),
                   ),
-                ],
               ],
             ),
           ],

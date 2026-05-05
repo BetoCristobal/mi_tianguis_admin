@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mi_tianguis_admin/features/auth/view/login_screen.dart';
 import 'package:mi_tianguis_admin/features/categorias/view/categoria_form_screen.dart';
 import 'package:mi_tianguis_admin/features/categorias/view/categorias_list_screen.dart';
 import 'package:mi_tianguis_admin/features/dashboard/view/dashboard_screen.dart';
@@ -19,7 +20,7 @@ class AppRoutes {
     switch (settings.name) {
       case login:
         return MaterialPageRoute<void>(
-          builder: (_) => const DashboardScreen(),
+          builder: (_) => const LoginScreen(),
           settings: settings,
         );
       case dashboard:

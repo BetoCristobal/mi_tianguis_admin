@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
@@ -94,7 +95,21 @@ class StorageDatasource {
       final deleteUrl = _buildDeleteRestUrl(url);
       if (deleteUrl == null) return;
 
-      final response = await http.delete(Uri.parse(deleteUrl));
+      final user = FirebaseAuth.instance.currentUser;
+      final idToken = await user?.getIdToken(true);
+      if (idToken == null || idToken.isEmpty) {
+        // ignore: avoid_print
+        print('[StorageDatasource] No hay token de auth para borrar: $url');
+        return;
+      }
+
+      final response = await http.delete(
+        Uri.parse(deleteUrl),
+        headers: {
+          // Firebase Storage REST expects Firebase Auth token in this header.
+          'Authorization': 'Firebase $idToken',
+        },
+      );
       if (response.statusCode != 200 && response.statusCode != 204) {
         // ignore: avoid_print
         print('[StorageDatasource] Error al borrar (${response.statusCode}): ${response.body}');

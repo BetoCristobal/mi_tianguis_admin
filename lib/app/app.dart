@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mi_tianguis_admin/app/app_gate.dart';
 import 'package:mi_tianguis_admin/app/routes.dart';
 import 'package:mi_tianguis_admin/app/theme.dart';
-import 'package:mi_tianguis_admin/features/dashboard/view/dashboard_screen.dart';
 
 class MiTianguisAdminApp extends StatelessWidget {
   const MiTianguisAdminApp({super.key});
@@ -12,7 +12,7 @@ class MiTianguisAdminApp extends StatelessWidget {
       title: 'Mi Tianguis Admin',
       debugShowCheckedModeBanner: false,
       theme: buildAdminTheme(),
-      home: const DashboardScreen(),
+      home: const AppGate(),
       onGenerateRoute: AppRoutes.onGenerateRoute,
     );
   }
