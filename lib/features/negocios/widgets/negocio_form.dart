@@ -32,6 +32,7 @@ class NegocioForm extends StatelessWidget {
     required this.galeriaItems,
     required this.onGaleriaPickAt,
     required this.onGaleriaRemoveAt,
+    required this.onGaleriaAddSlot,
   });
 
   final TextEditingController nombreController;
@@ -59,6 +60,7 @@ class NegocioForm extends StatelessWidget {
   final List<GaleriaItemModel> galeriaItems;
   final ValueChanged<int> onGaleriaPickAt;
   final ValueChanged<int> onGaleriaRemoveAt;
+  final VoidCallback onGaleriaAddSlot;
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +185,7 @@ class NegocioForm extends StatelessWidget {
                 items: galeriaItems,
                 onPickAt: onGaleriaPickAt,
                 onRemoveAt: onGaleriaRemoveAt,
+                onAddSlot: onGaleriaAddSlot,
               ),
             ),
           ],

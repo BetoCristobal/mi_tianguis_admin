@@ -1,10 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mi_tianguis_admin/core/constants/app_config.dart';
 
 class AuthService {
   AuthService._();
 
   static final AuthService instance = AuthService._();
-  static const String allowedEmail = 'beto.cristobal.ro@gmail.com';
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -15,7 +15,7 @@ class AuthService {
   bool get isAllowedUser =>
       currentUser != null &&
       currentUser!.email != null &&
-      currentUser!.email!.toLowerCase() == allowedEmail;
+      currentUser!.email!.toLowerCase() == AppConfig.allowedEmail;
 
   Future<void> signIn({
     required String email,
@@ -27,7 +27,7 @@ class AuthService {
     );
 
     final userEmail = credential.user?.email?.toLowerCase() ?? '';
-    if (userEmail != allowedEmail) {
+    if (userEmail != AppConfig.allowedEmail) {
       await signOut();
       throw FirebaseAuthException(
         code: 'unauthorized-email',

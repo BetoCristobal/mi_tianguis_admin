@@ -43,11 +43,7 @@ class _NegocioFormScreenState extends State<NegocioFormScreen> {
   String _imagenUrlOriginal = '';
   String _imagenPrincipalLocalPath = '';
   String? _imagenPrincipalNombre;
-  List<GaleriaItemModel> _galeriaItems = List<GaleriaItemModel>.generate(
-    5,
-    (_) => GaleriaItemModel.empty(),
-    growable: false,
-  );
+  List<GaleriaItemModel> _galeriaItems = [GaleriaItemModel.empty()];
   List<CategoriaModel> _categorias = [];
   List<String> _galeriaUrlsOriginales = const [];
 
@@ -86,17 +82,16 @@ class _NegocioFormScreenState extends State<NegocioFormScreen> {
       _imagenUrlOriginal = negocio.imagenUrl;
       _galeriaUrlsOriginales = List<String>.from(negocio.galeriaUrls);
       _imagenPrincipalNombre = _fileNameFromUrl(negocio.imagenUrl);
-      _galeriaItems = List<GaleriaItemModel>.generate(5, (index) {
-        if (index < negocio.galeriaUrls.length) {
-          final url = negocio.galeriaUrls[index];
-          return GaleriaItemModel(
+      _galeriaItems = [
+        ...negocio.galeriaUrls.map(
+          (url) => GaleriaItemModel(
             remoteUrl: url,
             localPath: '',
             fileName: _fileNameFromUrl(url),
-          );
-        }
-        return GaleriaItemModel.empty();
-      }, growable: false);
+          ),
+        ),
+        GaleriaItemModel.empty(), // slot vacío para agregar más
+      ];
     }
 
     _seeded = true;
@@ -186,9 +181,19 @@ class _NegocioFormScreenState extends State<NegocioFormScreen> {
     });
   }
 
+  void _addGallerySlot() {
+    setState(() {
+      _galeriaItems = [..._galeriaItems, GaleriaItemModel.empty()];
+    });
+  }
+
   void _removeGalleryImageAt(int index) {
     setState(() {
-      _galeriaItems[index] = GaleriaItemModel.empty();
+      _galeriaItems = List.from(_galeriaItems)..removeAt(index);
+      // Siempre dejar al menos un slot vacío al final
+      if (_galeriaItems.isEmpty || _galeriaItems.last.hasImage) {
+        _galeriaItems = [..._galeriaItems, GaleriaItemModel.empty()];
+      }
     });
   }
 
@@ -266,7 +271,9 @@ class _NegocioFormScreenState extends State<NegocioFormScreen> {
     return AnimatedBuilder(
       animation: _viewModel,
       builder: (context, _) {
-        return AdminScaffold(
+        return Stack(
+          children: [
+            AdminScaffold(
           title: _negocioId.isEmpty ? 'Nuevo negocio' : 'Editar negocio',
           currentRoute: AppRoutes.negocios,
           child: Scrollbar(
@@ -353,6 +360,7 @@ class _NegocioFormScreenState extends State<NegocioFormScreen> {
                               galeriaItems: _galeriaItems,
                               onGaleriaPickAt: _pickGalleryImageAt,
                               onGaleriaRemoveAt: _removeGalleryImageAt,
+                              onGaleriaAddSlot: _addGallerySlot,
                             ),
                           const SizedBox(height: 20),
                           Row(
@@ -387,7 +395,30 @@ class _NegocioFormScreenState extends State<NegocioFormScreen> {
               ),
             ),
           ),
-        );
+        ),
+        if (_viewModel.isSaving)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black38,
+              child: const Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Guardando negocio...'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
       },
     );
   }

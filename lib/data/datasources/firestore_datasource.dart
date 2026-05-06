@@ -2,6 +2,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:mi_tianguis_admin/data/models/categoria_model.dart';
 import 'package:mi_tianguis_admin/data/models/negocio_model.dart';
+import 'package:mi_tianguis_admin/data/models/sync_meta_model.dart';
+
+/// Estadísticas rápidas para el dashboard.
+class DashboardStats {
+  const DashboardStats({
+    required this.categoriasCount,
+    required this.negociosCount,
+    required this.syncMeta,
+  });
+
+  final int categoriasCount;
+  final int negociosCount;
+  final SyncMetaModel syncMeta;
+}
 
 class FirestoreDatasource {
   FirestoreDatasource({
@@ -9,6 +23,31 @@ class FirestoreDatasource {
   }) : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
+
+  Future<DashboardStats> fetchDashboardStats() async {
+    final results = await Future.wait([
+      _firestore.collection('categorias').count().get(),
+      _firestore.collection('negocios').count().get(),
+      _firestore.collection('app_meta').doc('sync').get(),
+    ]);
+
+    final categoriasSnap = results[0] as AggregateQuerySnapshot;
+    final negociosSnap = results[1] as AggregateQuerySnapshot;
+    final syncSnap = results[2] as DocumentSnapshot<Map<String, dynamic>>;
+
+    final syncData = syncSnap.data();
+    final categoriasTs = syncData?['categoriasUpdatedAt'] as Timestamp?;
+    final negociosTs = syncData?['negociosUpdatedAt'] as Timestamp?;
+
+    return DashboardStats(
+      categoriasCount: categoriasSnap.count ?? 0,
+      negociosCount: negociosSnap.count ?? 0,
+      syncMeta: SyncMetaModel(
+        categoriasUpdatedAt: categoriasTs?.toDate(),
+        negociosUpdatedAt: negociosTs?.toDate(),
+      ),
+    );
+  }
 
   Future<List<CategoriaModel>> fetchCategorias() async {
     final snapshot = await _firestore.collection('categorias').get();

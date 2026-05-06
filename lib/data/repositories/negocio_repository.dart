@@ -43,9 +43,11 @@ class NegocioRepository {
         : List<String>.from(negocio.galeriaUrls);
     final galleryUrls = <String>[];
 
-    // Borrar imagen principal si se reemplazó por una local
+    // Borrar imagen principal si se reemplazó por una local (best-effort)
     if (negocio.imagenLocalPath.trim().isNotEmpty) {
-      await _storageDatasource.deleteFileByUrl(previousMainImageUrl);
+      try {
+        await _storageDatasource.deleteFileByUrl(previousMainImageUrl);
+      } catch (_) {}
       mainImageUrl = await _storageDatasource.uploadBusinessMainImage(
         categoriaSlug: negocio.categoriaSlug,
         negocioId: negocioId,
@@ -55,7 +57,6 @@ class NegocioRepository {
 
     final normalizedItems = galeriaItems
         .where((item) => item.hasImage)
-        .take(5)
         .toList(growable: false);
 
     for (var index = 0; index < normalizedItems.length; index++) {
@@ -73,12 +74,14 @@ class NegocioRepository {
       }
     }
 
-    // Borrar del Storage las URLs de galería que ya no están en la lista nueva
+    // Borrar del Storage las URLs de galería que ya no están en la lista nueva (best-effort)
     final removedUrls = previousGalleryUrls
         .where((url) => !galleryUrls.contains(url))
         .toList();
     for (final url in removedUrls) {
-      await _storageDatasource.deleteFileByUrl(url);
+      try {
+        await _storageDatasource.deleteFileByUrl(url);
+      } catch (_) {}
     }
 
     await _firestoreDatasource.saveNegocio(

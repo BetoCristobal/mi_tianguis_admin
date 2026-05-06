@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mi_tianguis_admin/app/routes.dart';
+import 'package:mi_tianguis_admin/app/theme.dart';
+import 'package:mi_tianguis_admin/core/constants/app_config.dart';
 import 'package:mi_tianguis_admin/core/services/auth_service.dart';
+import 'package:mi_tianguis_admin/core/services/theme_service.dart';
 
 class AdminScaffold extends StatelessWidget {
   const AdminScaffold({
@@ -69,59 +72,156 @@ class _AdminSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 260,
-      color: const Color(0xFF163B2D),
-      padding: const EdgeInsets.fromLTRB(18, 28, 18, 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Mi Tianguis Admin',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-            ),
+    return AnimatedBuilder(
+      animation: ThemeService.instance,
+      builder: (context, _) {
+        final palette = ThemeService.instance.palette;
+        return Container(
+          width: 260,
+          color: palette.sidebar,
+          padding: const EdgeInsets.fromLTRB(18, 28, 18, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Mi Tianguis Admin',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Panel de captura y administracion',
+                style: TextStyle(
+                  color: Color(0xFFCDE4D8),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 28),
+              _SidebarItem(
+                label: 'Dashboard',
+                icon: Icons.dashboard_outlined,
+                selected: currentRoute == AppRoutes.dashboard,
+                onTap: () => Navigator.pushReplacementNamed(
+                  context,
+                  AppRoutes.dashboard,
+                ),
+              ),
+              _SidebarItem(
+                label: 'Categorias',
+                icon: Icons.category_outlined,
+                selected: currentRoute == AppRoutes.categorias,
+                onTap: () => Navigator.pushReplacementNamed(
+                  context,
+                  AppRoutes.categorias,
+                ),
+              ),
+              _SidebarItem(
+                label: 'Negocios',
+                icon: Icons.storefront_outlined,
+                selected: currentRoute == AppRoutes.negocios,
+                onTap: () => Navigator.pushReplacementNamed(
+                  context,
+                  AppRoutes.negocios,
+                ),
+              ),
+              const Spacer(),
+              // ── Selector de paleta de colores ──────────────────
+              _PaletteSelector(currentPalette: palette),
+              const SizedBox(height: 14),
+              // ── Versión ─────────────────────────────────────────
+              Text(
+                'v${AppConfig.appVersion}',
+                style: const TextStyle(
+                  color: Color(0xFF7AADA0),
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          const Text(
-            'Panel de captura y administracion',
-            style: TextStyle(
-              color: Color(0xFFCDE4D8),
-              height: 1.4,
+        );
+      },
+    );
+  }
+}
+
+/// Botón que abre un diálogo para cambiar la paleta de colores.
+class _PaletteSelector extends StatelessWidget {
+  const _PaletteSelector({required this.currentPalette});
+
+  final AppColorPalette currentPalette;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => _showPaletteDialog(context),
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        child: Row(
+          children: [
+            Icon(Icons.color_lens_outlined, color: Colors.white.withValues(alpha: 0.8), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                currentPalette.label,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 13,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 28),
-          _SidebarItem(
-            label: 'Dashboard',
-            icon: Icons.dashboard_outlined,
-            selected: currentRoute == AppRoutes.dashboard,
-            onTap: () => Navigator.pushReplacementNamed(
-              context,
-              AppRoutes.dashboard,
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: currentPalette.primary,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
             ),
-          ),
-          _SidebarItem(
-            label: 'Categorias',
-            icon: Icons.category_outlined,
-            selected: currentRoute == AppRoutes.categorias,
-            onTap: () => Navigator.pushReplacementNamed(
-              context,
-              AppRoutes.categorias,
-            ),
-          ),
-          _SidebarItem(
-            label: 'Negocios',
-            icon: Icons.storefront_outlined,
-            selected: currentRoute == AppRoutes.negocios,
-            onTap: () => Navigator.pushReplacementNamed(
-              context,
-              AppRoutes.negocios,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  void _showPaletteDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Paleta de colores'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: AppColorPalette.values.map((palette) {
+              return AnimatedBuilder(
+                animation: ThemeService.instance,
+                builder: (context, _) {
+                  final isSelected = ThemeService.instance.palette == palette;
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: palette.primary,
+                      radius: 14,
+                      child: isSelected
+                          ? const Icon(Icons.check, color: Colors.white, size: 16)
+                          : null,
+                    ),
+                    title: Text(palette.label),
+                    selected: isSelected,
+                    onTap: () {
+                      ThemeService.instance.setPalette(palette);
+                      Navigator.pop(dialogContext);
+                    },
+                  );
+                },
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 }

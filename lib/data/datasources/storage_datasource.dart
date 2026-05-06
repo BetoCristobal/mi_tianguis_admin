@@ -89,34 +89,31 @@ class StorageDatasource {
       return;
     }
 
-    try {
-      // Usamos REST API directamente para evitar el bug de "non-platform thread"
-      // del plugin firebase_storage en Windows en operaciones de borrado.
-      final deleteUrl = _buildDeleteRestUrl(url);
-      if (deleteUrl == null) return;
+    // Usamos REST API directamente para evitar el bug de "non-platform thread"
+    // del plugin firebase_storage en Windows en operaciones de borrado.
+    final deleteUrl = _buildDeleteRestUrl(url);
+    if (deleteUrl == null) return;
 
-      final user = FirebaseAuth.instance.currentUser;
-      final idToken = await user?.getIdToken(true);
-      if (idToken == null || idToken.isEmpty) {
-        // ignore: avoid_print
-        print('[StorageDatasource] No hay token de auth para borrar: $url');
-        return;
-      }
+    final user = FirebaseAuth.instance.currentUser;
+    final idToken = await user?.getIdToken(true);
+    if (idToken == null || idToken.isEmpty) {
+      throw StateError('No hay sesión activa para borrar el archivo.');
+    }
 
-      final response = await http.delete(
-        Uri.parse(deleteUrl),
-        headers: {
-          // Firebase Storage REST expects Firebase Auth token in this header.
-          'Authorization': 'Firebase $idToken',
-        },
+    final response = await http.delete(
+      Uri.parse(deleteUrl),
+      headers: {
+        'Authorization': 'Firebase $idToken',
+      },
+    );
+
+    // 404 significa que el archivo ya no existe: lo ignoramos.
+    if (response.statusCode != 200 &&
+        response.statusCode != 204 &&
+        response.statusCode != 404) {
+      throw StateError(
+        'Error al borrar archivo en Storage (${response.statusCode}): ${response.body}',
       );
-      if (response.statusCode != 200 && response.statusCode != 204) {
-        // ignore: avoid_print
-        print('[StorageDatasource] Error al borrar (${response.statusCode}): ${response.body}');
-      }
-    } catch (e) {
-      // ignore: avoid_print
-      print('[StorageDatasource] Excepción al borrar $url → $e');
     }
   }
 
@@ -142,22 +139,3 @@ String? _buildDeleteRestUrl(String downloadUrl) {
   return '$base$encodedPath';
 }
 
-String? _extractStoragePathFromUrl(String url) {
-  final uri = Uri.tryParse(url);
-  if (uri == null) {
-    return null;
-  }
-
-  final fullUrl = uri.toString();
-  final markerIndex = fullUrl.indexOf('/o/');
-  if (markerIndex == -1) {
-    return null;
-  }
-
-  final encodedPath = fullUrl.substring(markerIndex + 3).split('?').first;
-  if (encodedPath.isEmpty) {
-    return null;
-  }
-
-  return Uri.decodeFull(encodedPath);
-}

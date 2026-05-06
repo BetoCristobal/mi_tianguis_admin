@@ -62,7 +62,7 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${error.message ?? error.toString()}')),
+        SnackBar(content: Text(error.message ?? error.toString())),
       );
     } catch (_) {
       if (!mounted) {
