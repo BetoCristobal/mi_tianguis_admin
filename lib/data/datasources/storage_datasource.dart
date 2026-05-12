@@ -69,7 +69,12 @@ class StorageDatasource {
     required String categorySlug,
     String? imageUrl,
   }) async {
-    await _deleteByUrlIfPresent(imageUrl);
+    try {
+      await _deleteByUrlIfPresent(imageUrl);
+    } catch (e) {
+      // En Windows, el borrado de Storage puede fallar. Lo reportamos pero no es crítico.
+      print('Advertencia: No se pudo borrar imagen de categoria ($categorySlug): $e');
+    }
   }
 
   Future<void> deleteBusinessAssets({
@@ -78,42 +83,63 @@ class StorageDatasource {
     String? mainImageUrl,
     List<String> galleryUrls = const [],
   }) async {
-    await _deleteByUrlIfPresent(mainImageUrl);
-    for (final url in galleryUrls) {
-      await _deleteByUrlIfPresent(url);
+    try {
+      await _deleteByUrlIfPresent(mainImageUrl);
+      for (final url in galleryUrls) {
+        try {
+          await _deleteByUrlIfPresent(url);
+        } catch (e) {
+          print('Advertencia: No se pudo borrar imagen de galeria ($url): $e');
+        }
+      }
+    } catch (e) {
+      print('Advertencia: No se pudo borrar imagen principal ($categoriaSlug/$negocioId): $e');
     }
   }
 
   Future<void> _deleteByUrlIfPresent(String? url) async {
-    if (url == null || url.trim().isEmpty) {
-      return;
-    }
+    try {
+      if (url == null || url.trim().isEmpty) {
+        return;
+      }
 
-    // Usamos REST API directamente para evitar el bug de "non-platform thread"
-    // del plugin firebase_storage en Windows en operaciones de borrado.
-    final deleteUrl = _buildDeleteRestUrl(url);
-    if (deleteUrl == null) return;
+      // Usamos REST API directamente para evitar el bug de "non-platform thread"
+      // del plugin firebase_storage en Windows en operaciones de borrado.
+      final deleteUrl = _buildDeleteRestUrl(url);
+      if (deleteUrl == null) return;
 
-    final user = FirebaseAuth.instance.currentUser;
-    final idToken = await user?.getIdToken(true);
-    if (idToken == null || idToken.isEmpty) {
-      throw StateError('No hay sesión activa para borrar el archivo.');
-    }
+      final user = FirebaseAuth.instance.currentUser;
+      final idToken = await user?.getIdToken(true);
+      if (idToken == null || idToken.isEmpty) {
+        // Silenciosamente ignorar si no hay sesión activa
+        return;
+      }
 
-    final response = await http.delete(
-      Uri.parse(deleteUrl),
-      headers: {
-        'Authorization': 'Firebase $idToken',
-      },
-    );
-
-    // 404 significa que el archivo ya no existe: lo ignoramos.
-    if (response.statusCode != 200 &&
-        response.statusCode != 204 &&
-        response.statusCode != 404) {
-      throw StateError(
-        'Error al borrar archivo en Storage (${response.statusCode}): ${response.body}',
+      final response = await http.delete(
+        Uri.parse(deleteUrl),
+        headers: {
+          'Authorization': 'Firebase $idToken',
+        },
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          // Si timeout, simplemente continuar sin fallar
+          return http.Response('timeout', 408);
+        },
       );
+
+      // 404 significa que el archivo ya no existe: lo ignoramos.
+      // 408 es timeout que también ignoramos
+      if (response.statusCode != 200 &&
+          response.statusCode != 204 &&
+          response.statusCode != 404 &&
+          response.statusCode != 408) {
+        // Log pero no fallar
+        print('Advertencia: Error al borrar archivo en Storage (${response.statusCode})');
+      }
+    } catch (e) {
+      // No fallar por errores en Storage
+      print('Advertencia: Excepción al borrar archivo: $e');
     }
   }
 

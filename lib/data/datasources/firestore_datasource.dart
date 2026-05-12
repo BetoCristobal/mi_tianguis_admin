@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:mi_tianguis_admin/data/models/categoria_model.dart';
 import 'package:mi_tianguis_admin/data/models/negocio_model.dart';
 import 'package:mi_tianguis_admin/data/models/sync_meta_model.dart';
@@ -50,46 +49,54 @@ class FirestoreDatasource {
   }
 
   Future<List<CategoriaModel>> fetchCategorias() async {
-    final snapshot = await _firestore.collection('categorias').get();
-    final items = snapshot.docs
-        .map((doc) {
-          final data = doc.data();
-          return CategoriaModel(
-            id: doc.id,
-            titulo: (data['titulo'] ?? '') as String,
-            slug: (data['slug'] ?? doc.id) as String,
-            descripcion: (data['descripcion'] ?? '') as String,
-            imagenUrl: ((data['image'] ?? data['imagen']) ?? '') as String,
-            localImagePath: '',
-            colorHex: (data['color'] ?? '#D96C3F') as String,
-            activo: (data['activo'] ?? true) as bool,
-            esPrueba: (data['es_prueba'] ?? false) as bool,
-          );
-        })
-        .toList(growable: false)
-      ..sort((a, b) => a.titulo.compareTo(b.titulo));
+    try {
+      final snapshot = await _firestore.collection('categorias').get();
+      final items = snapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            return CategoriaModel(
+              id: doc.id,
+              titulo: (data['titulo'] ?? '') as String,
+              slug: (data['slug'] ?? doc.id) as String,
+              descripcion: (data['descripcion'] ?? '') as String,
+              imagenUrl: ((data['image'] ?? data['imagen']) ?? '') as String,
+              localImagePath: '',
+              colorHex: (data['color'] ?? '#D96C3F') as String,
+              activo: (data['activo'] ?? true) as bool,
+              esPrueba: (data['es_prueba'] ?? false) as bool,
+            );
+          })
+          .toList(growable: false)
+        ..sort((a, b) => a.titulo.compareTo(b.titulo));
 
-    return items;
+      return items;
+    } catch (e) {
+      throw Exception('Error cargando categorias: $e');
+    }
   }
 
   Future<void> saveCategoria(CategoriaModel categoria) async {
-    final now = Timestamp.now();
-    final docId = categoria.id.isNotEmpty ? categoria.id : categoria.slug;
+    try {
+      final now = Timestamp.now();
+      final docId = categoria.id.isNotEmpty ? categoria.id : categoria.slug;
 
-    await _firestore.collection('categorias').doc(docId).set({
-      'titulo': categoria.titulo,
-      'slug': categoria.slug,
-      'descripcion': categoria.descripcion,
-      'imagen': categoria.imagenUrl,
-      'color': categoria.colorHex,
-      'activo': categoria.activo,
-      'es_prueba': categoria.esPrueba,
-      'actualizado': now,
-    }, SetOptions(merge: true));
+      await _firestore.collection('categorias').doc(docId).set({
+        'titulo': categoria.titulo,
+        'slug': categoria.slug,
+        'descripcion': categoria.descripcion,
+        'imagen': categoria.imagenUrl,
+        'color': categoria.colorHex,
+        'activo': categoria.activo,
+        'es_prueba': categoria.esPrueba,
+        'actualizado': now,
+      }, SetOptions(merge: true));
 
-    await _firestore.collection('app_meta').doc('sync').set({
-      'categoriasUpdatedAt': now,
-    }, SetOptions(merge: true));
+      await _firestore.collection('app_meta').doc('sync').set({
+        'categoriasUpdatedAt': now,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Error guardando categoria: $e');
+    }
   }
 
   NegocioModel _mapDocToNegocio(
@@ -178,93 +185,107 @@ class FirestoreDatasource {
   }
 
   Future<void> saveNegocio(NegocioModel negocio) async {
-    final now = Timestamp.now();
-    final docId = negocio.id.isNotEmpty ? negocio.id : _slugify(negocio.nombre);
+    try {
+      final now = Timestamp.now();
+      final docId = negocio.id.isNotEmpty ? negocio.id : _slugify(negocio.nombre);
 
-    if (docId.trim().isEmpty) {
-      throw StateError('No se pudo generar un id para el negocio.');
+      if (docId.trim().isEmpty) {
+        throw StateError('No se pudo generar un id para el negocio.');
+      }
+
+      if (negocio.categoriaId.trim().isEmpty) {
+        throw StateError('Debes seleccionar una categoria valida.');
+      }
+
+      final payload = <String, dynamic>{
+        'nombre': negocio.nombre,
+        'descripcion': negocio.descripcion,
+        'productos_servicios': negocio.productosServicios,
+        'categoria_id': negocio.categoriaId,
+        'categoria_titulo': negocio.categoriaTitulo,
+        'activo': negocio.activo,
+        'direccion': negocio.direccion,
+        'whatsapp': negocio.whatsapp,
+        'facebook': negocio.facebook,
+        'instagram': negocio.instagram,
+        'imagen': negocio.imagenUrl,
+        'galeria': negocio.galeriaUrls,
+        'es_prueba': negocio.esPrueba,
+        'coordenadas':
+            negocio.latitud == null || negocio.longitud == null
+                ? null
+                : GeoPoint(negocio.latitud!, negocio.longitud!),
+        'actualizado': now,
+      };
+
+      if (negocio.id.isEmpty) {
+        payload['creado'] = now;
+      }
+
+      await _firestore
+          .collection('negocios')
+          .doc(docId)
+          .set(payload, SetOptions(merge: true));
+
+      await _firestore.collection('app_meta').doc('sync').set({
+        'negociosUpdatedAt': now,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      // Re-lanzar StateError para mantener validación
+      if (e is StateError) {
+        rethrow;
+      }
+      throw Exception('Error guardando negocio: $e');
     }
-
-    if (negocio.categoriaId.trim().isEmpty) {
-      throw StateError('Debes seleccionar una categoria valida.');
-    }
-
-    final payload = <String, dynamic>{
-      'nombre': negocio.nombre,
-      'descripcion': negocio.descripcion,
-      'productos_servicios': negocio.productosServicios,
-      'categoria_id': negocio.categoriaId,
-      'categoria_slug': negocio.categoriaSlug,
-      'categoria_titulo': negocio.categoriaTitulo,
-      'activo': negocio.activo,
-      'direccion': negocio.direccion,
-      'whatsapp': negocio.whatsapp,
-      'facebook': negocio.facebook,
-      'instagram': negocio.instagram,
-      'imagen': negocio.imagenUrl,
-      'galeria': negocio.galeriaUrls,
-      'es_prueba': negocio.esPrueba,
-      'coordenadas':
-          negocio.latitud == null || negocio.longitud == null
-              ? null
-              : GeoPoint(negocio.latitud!, negocio.longitud!),
-      'actualizado': now,
-    };
-
-    // On Windows desktop, writing a DocumentReference has caused native
-    // runtime aborts on some Firebase SDK combinations.
-    if (defaultTargetPlatform != TargetPlatform.windows) {
-      payload['categoria'] = _firestore
-          .collection('categorias')
-          .doc(negocio.categoriaId);
-    }
-
-    if (negocio.id.isEmpty) {
-      payload['creado'] = now;
-    }
-
-    await _firestore
-        .collection('negocios')
-        .doc(docId)
-        .set(payload, SetOptions(merge: true));
-
-    await _firestore.collection('app_meta').doc('sync').set({
-      'negociosUpdatedAt': now,
-    }, SetOptions(merge: true));
   }
 
   Future<void> deleteCategoria(CategoriaModel categoria) async {
-    final categoriaRef = _firestore.collection('categorias').doc(categoria.id);
-    final negociosRelacionados = await _firestore
-        .collection('negocios')
-        .where('categoria', isEqualTo: categoriaRef)
-        .limit(1)
-        .get();
+    try {
+      // En Windows, evitar queries con DocumentReference (causa crashes nativos)
+      // Solo verificar por categoria_id que es más confiable
+      final negociosRelacionadosPorId = await _firestore
+          .collection('negocios')
+          .where('categoria_id', isEqualTo: categoria.id)
+          .limit(1)
+          .get();
 
-    final negociosRelacionadosPorId = await _firestore
-        .collection('negocios')
-        .where('categoria_id', isEqualTo: categoria.id)
-        .limit(1)
-        .get();
+      if (negociosRelacionadosPorId.docs.isNotEmpty) {
+        throw StateError(
+          'No puedes eliminar esta categoria porque todavia tiene negocios asociados.',
+        );
+      }
 
-    if (negociosRelacionados.docs.isNotEmpty ||
-        negociosRelacionadosPorId.docs.isNotEmpty) {
-      throw StateError(
-        'No puedes eliminar esta categoria porque todavia tiene negocios asociados.',
-      );
+      // Pequeño delay antes de borrar (en Windows es crítico)
+      await Future.delayed(const Duration(milliseconds: 200));
+      
+      final categoriaRef = _firestore.collection('categorias').doc(categoria.id);
+      await categoriaRef.delete();
+      
+      // Actualizar sync metadata
+      await Future.delayed(const Duration(milliseconds: 100));
+      await _firestore.collection('app_meta').doc('sync').set({
+        'categoriasUpdatedAt': Timestamp.now(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      // Re-lanzar StateError como es para mostrar el mensaje de validación
+      if (e is StateError) {
+        rethrow;
+      }
+      // Para otros errores, lanzar con más contexto
+      throw Exception('Error al eliminar categoria: $e');
     }
-
-    await categoriaRef.delete();
-    await _firestore.collection('app_meta').doc('sync').set({
-      'categoriasUpdatedAt': Timestamp.now(),
-    }, SetOptions(merge: true));
   }
 
   Future<void> deleteNegocio(NegocioModel negocio) async {
-    await _firestore.collection('negocios').doc(negocio.id).delete();
-    await _firestore.collection('app_meta').doc('sync').set({
-      'negociosUpdatedAt': Timestamp.now(),
-    }, SetOptions(merge: true));
+    try {
+      await Future.delayed(const Duration(milliseconds: 100));
+      await _firestore.collection('negocios').doc(negocio.id).delete();
+      await _firestore.collection('app_meta').doc('sync').set({
+        'negociosUpdatedAt': Timestamp.now(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Error al eliminar negocio: $e');
+    }
   }
 }
 

@@ -33,10 +33,18 @@ class CategoriaRepository {
   }
 
   Future<void> deleteCategoria(CategoriaModel categoria) async {
-    await _firestoreDatasource.deleteCategoria(categoria);
-    await _storageDatasource.deleteCategoryAssets(
-      categorySlug: categoria.slug,
-      imageUrl: categoria.imagenUrl,
-    );
+    try {
+      // Primero borrar de Firestore
+      await _firestoreDatasource.deleteCategoria(categoria);
+      
+      // Luego borrar assets de Storage (que no crítico si falla en Windows)
+      await _storageDatasource.deleteCategoryAssets(
+        categorySlug: categoria.slug,
+        imageUrl: categoria.imagenUrl,
+      );
+    } catch (e) {
+      // Re-lanzar para que la UI lo maneje
+      rethrow;
+    }
   }
 }

@@ -34,10 +34,12 @@ class CategoriasListViewModel extends ChangeNotifier {
     _isDeleting = true;
     notifyListeners();
 
-    await _repository.deleteCategoria(categoria);
-    _categorias.removeWhere((item) => item.id == categoria.id);
-
-    _isDeleting = false;
-    notifyListeners();
+    try {
+      await _repository.deleteCategoria(categoria);
+      _categorias.removeWhere((item) => item.id == categoria.id);
+    } finally {
+      _isDeleting = false;
+      notifyListeners();
+    }
   }
 }

@@ -64,12 +64,19 @@ class _CategoriasListScreenState extends State<CategoriasListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error.message ?? error.toString())),
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
+      final errorMsg = error.toString();
+      final displayMsg = errorMsg.length > 100
+          ? '${errorMsg.substring(0, 100)}...'
+          : errorMsg;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo eliminar la categoria.')),
+        SnackBar(
+          content: Text('Error al eliminar: $displayMsg'),
+          duration: const Duration(seconds: 5),
+        ),
       );
     }
   }
